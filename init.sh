@@ -17,6 +17,7 @@ TOR="0"
 TARGET=""
 IP=""
 OS=""
+ANON=""
 
 function main(){
 	
@@ -25,13 +26,13 @@ function main(){
 	
 		if [ -z "$TARGET" ]; then
 			echo -e   "\033[2J\033[0;1H"
-			echo -e   "\t\t\t        ___       __        _______   "; 
+			echo -e   "\t\t\t        ___       __        _______   " 
 			echo -e   "\t\t\t        | |      /  \\      |  _____| \t"
-			echo -e   "\t\t\t        | |     / /\ \\     | |_____  "; 
+			echo -e   "\t\t\t        | |     / /\ \\     | |_____  " 
 			echo -e   "\t\t\t        | |    / /__\ \\    |_____  | \t"
-			echo -e   "\t\t\t        | |   / _____  \\    _____| | "; 
+			echo -e   "\t\t\t        | |   / _____  \\    _____| | " 
 			echo -e   "\t\t\t        | |  / /      \ \\  |       | \t"
-			echo -e   "\t\t\t        ############################  "; 
+			echo -e   "\t\t\t        ############################  " 
 			echo -e   "\t\t\t           increased attack speed     \t"
 			echo -e   ""
 			echo -e   "${FONTGREEN}------------------------------------------------------------------------------------${NC}"
@@ -60,17 +61,73 @@ function main(){
 		echo ""
 		echo -e   "${FONTGREEN}------------------------------------------------------------------------------------${NC}"
 		echo -en "IAS --> "
-		read INPUT
 		
+		read INPUT ARG
+		commands $INPUT $ARG
 		
 
 	done
 	
 }
 
+function commands(){
+	
+	case $1 in
+		"start")
+			if [ -z "$ARG" ]; then
+				echo -e "usage:\tstart <tor>"
+				read -n 1 -s 
+			elif [ "$ARG" == "tor" ]; then
+				sudo service tor start
+				bincheck tor
+			fi
+		;;
+		"stop")
+			if [ -z "$ARG" ]; then
+				echo -e "usage:\tstop <tor>"
+				read -n 1 -s 
+				continue
+			elif [ "$ARG" == "tor" ]; then
+				sudo service tor stop
+				bincheck tor
+			fi
+		;;
+		"charge")
+			squik
+		;;
+		"target")  ############################# STRIP URL, check whats wrong with IP input
+			if [ -z "$ARG" ]; then
+				echo -e "usage:\ttarget <URL>"
+				read -n 1 -s 
+				continue
+			fi
+			TARGET="$ARG"
+			IP=$(ping -q -c 3 -w 2 $TARGET | grep -oP '(?:[0-9]{1,3}\.){3}[0-9]{1,3}')
+		
+		;;
+		"?" | "help")
+			echo -e "\ncommands:"
+			echo -e "start tor service \t start tor"
+			echo -e "stop tor service \t stop tor"
+			echo -e "quick scan \t\t charge"
+			echo -e "set new target \t\t target <URL>"
+			echo -e "exit IAS suite \t\t exit\n"	 
+			read -n 1 -s 
+		;;		
+		"exit")
+			exit 0
+		;;
+	esac
+}
+
+function squik(){
+	
+	sqlmap -o $ANON -u $TARGET --dbs 
+}
+
 function init(){
 		
-	#ping 8.8.8.8
+	#ping 8.8.8.8 for network check
 	ping -q -c 3 -w 2 8.8.8.8
 	if [ $? == "1" ]; then
 		echo -e "\033[2J\033[0;1H"
@@ -89,34 +146,38 @@ function init(){
 	bincheck sqlmap
 	
 	#check tor
-	service tor status 1>/dev/null
-	if [ $? == "0" ]; then
-		echo -e "${GREEN}[!]${NC} tor service running"
-		TOR="1"
-	else
-		which tor 1>/dev/null
-		if [ $? == "0" ]; then
-			echo -e "${ORANGE}[warning]${NC} tor not running"
-			TOR="2"
-		else
-			echo -e "${RED}[critical]${NC} tor not found"
-		fi
-	fi
+	bincheck tor
 }
 
 function bincheck()
 {
-	which $1 1>/dev/null
-	if [ $? == "0" ]; then
-		echo -e "${GREEN}[!]${NC} $1 detected"
-		
-		if [ $1 == "nmap" ]; then
-			NMAP=1
-		elif [ $1 == "sqlmap" ]; then
-			SQLMAP=1
+	if [ "$1" == "tor" ]; then
+		service tor status 1>/dev/null
+		if [ $? == "0" ]; then
+			echo -e "${GREEN}[!]${NC} tor service running"
+			TOR="1"
+		else
+			which tor 1>/dev/null
+			if [ $? == "0" ]; then
+				echo -e "${ORANGE}[warning]${NC} tor not running"
+				TOR="2"
+			else
+				echo -e "${RED}[critical]${NC} tor not found"
+			fi
 		fi
 	else
-		echo -e "${RED}[critical]${NC} $1 not found"
+		which $1 1>/dev/null
+		if [ $? == "0" ]; then
+			echo -e "${GREEN}[!]${NC} $1 detected"
+		
+			if [ $1 == "nmap" ]; then
+				NMAP=1
+			elif [ $1 == "sqlmap" ]; then
+				SQLMAP=1
+			fi
+		else
+			echo -e "${RED}[critical]${NC} $1 not found"
+		fi
 	fi
 }
 
@@ -147,7 +208,7 @@ function initstatus()
 	elif [ $1 == "1" ]; then
 		echo -e "\t[${GREEN}  ${NC}] $2"
 	elif [ $1 == "2" ]; then
-		echo -e "	[${ORANGE}  ${NC}] $2 stopped [sudo service tor start]"
+		echo -e "	[${ORANGE}  ${NC}] $2 stopped"
 	fi	
 	
 }
